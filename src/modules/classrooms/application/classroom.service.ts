@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import type { ClassroomRepository } from '../domain/classroom.repository';
 import { Classroom } from '../domain/classroom.entity';
 import { CreateClassroomDto } from './dto/create-classroom.dto';
@@ -21,4 +21,22 @@ export class ClassroomService {
 
     return this.repo.save(classroom);
 	}
+
+  async findAll(): Promise<Classroom[]> {
+    return this.repo.findAll()
+  }
+
+  async findOne(id: number): Promise<Classroom | null> {
+    const classroom = await this.repo.findById(id);
+    if (!classroom) throw new NotFoundException('Classroom Not Found!');
+    
+    return classroom;
+  } 
+
+  async findByClassCode(classCode: string): Promise<Classroom | null> {
+    const classroom = await this.repo.findByClassCode(classCode);
+    if (!classCode) throw new NotFoundException('Classroom Not Found!');
+
+    return classroom
+  }
 }
