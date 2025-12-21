@@ -24,7 +24,7 @@ export const worker = new Worker(
         ? ['python3', `/code/${filename}`]
         : ['bash', '-c', `gcc /code/${filename} -o /code/out && /code/out`],
       HostConfig: {
-        AutoRemove: true,
+        AutoRemove: false,
         Binds: [`${process.cwd()}:/code:ro`],
         NetworkMode: 'none',
         Memory: 256 * 1024 * 1024,
@@ -39,6 +39,9 @@ export const worker = new Worker(
     stream.on('data', (chunk) => (output += chunk.toString()));
     await new Promise((resolve) => stream.on('end', resolve));
 
+    setTimeout(async () => {
+      await container.remove();
+    }, 1000);
     return { stdout: output.trim(), status: 'success' };
   },
   { connection, concurrency: 10 }
