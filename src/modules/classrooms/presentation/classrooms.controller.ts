@@ -12,4 +12,20 @@ export class ClassroomsController {
     const userId = 1; // HARD-CODED MOCK USER
     return this.service.create(dto, userId);
   }
+
+  @Get()
+  findAll() {
+    const user = { id: 1 };
+    return this.service.findAll(user);
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.service.findOne(+id);
+  }
+
+  @Get('by-code/:classCode')
+  findByClassCode(@Param('classCode') classCode: string) {
+    return this.service.findByClassCode(classCode);
+  }
 }

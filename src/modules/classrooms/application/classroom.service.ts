@@ -20,4 +20,22 @@ export class ClassroomService {
 
     return this.repo.save(classroom, userId);
 	}
+
+  async findAll(user: { id: number }): Promise<Classroom[]> {
+    return this.repo.findAll(user);
+  }
+
+  async findOne(id: number): Promise<Classroom | null> {
+    const classroom = await this.repo.findById(id);
+    if (!classroom) throw new NotFoundException('Classroom Not Found!');
+    
+    return classroom;
+  } 
+
+  async findByClassCode(classCode: string): Promise<Classroom | null> {
+    const classroom = await this.repo.findByClassCode(classCode);
+    if (!classCode) throw new NotFoundException('Classroom Not Found!');
+
+    return classroom
+  }
 }

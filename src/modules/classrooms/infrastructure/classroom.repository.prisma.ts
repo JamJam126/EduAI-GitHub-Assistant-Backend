@@ -39,7 +39,36 @@ export class ClassroomRepositoryPrisma implements ClassroomRepository {
     });
   }
 
-  
+  async findAll(user: { id: number }): Promise<Classroom[]> {
+    const classrooms = await this.prisma.classroom.findMany({
+      where: {
+        users: {
+          some: {
+            user_id: user.id
+          }
+        }
+      },
+    });
+    return classrooms.map(this.toDomain);
+  }
+
+  async findById(id: number): Promise<Classroom | null> {
+    const classroom = await this.prisma.classroom.findUnique({
+      where: { id },
+    });
+    return classroom ? this.toDomain(classroom) : null;
+  }
+
+  async findByClassCode(classCode: string): Promise<Classroom | null> {
+    if (!classCode) {
+      throw new Error('classCode is required');
+    }
+    const classroom = await this.prisma.classroom.findUnique({
+      where: { class_code: classCode }
+    });
+    return classroom ? this.toDomain(classroom) : null;
+  }
+
   private toDomain(raw: any): Classroom {
     return new Classroom(
       raw.id,
