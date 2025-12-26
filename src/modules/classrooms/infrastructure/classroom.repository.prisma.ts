@@ -7,34 +7,24 @@ import { PrismaService } from 'prisma/prisma.service';
 export class ClassroomRepositoryPrisma implements ClassroomRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async save(classroom: Classroom, creatorId: number): Promise<Classroom> {
-    return await this.prisma.$transaction(async (tx) => {
-      const result = await this.prisma.classroom.upsert({
-        where: {
-          id: classroom.id ?? -1,
-        },
-        create: {
+  async create(classroom: Classroom, creatorId: number): Promise<Classroom> {
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.classroom.create({
+        data: {
           class_code: classroom.classCode,
           name: classroom.name,
           description: classroom.description ?? null,
         },
-        update: {
-          class_code: classroom.classCode,
-          name: classroom.name,
-          description: classroom.description ?? null,
-          updated_at: classroom.updatedAt,
-        },  
       });
 
-      if (classroom.id === 0 && creatorId) {
-        await tx.classroomUser.create({
-          data: {
-            classroom_id: result.id,
-            user_id: creatorId,
-            role: 'ADMIN', 
-          },
-        });
-      }
+      await tx.classroomUser.create({
+        data: {
+          classroom_id: result.id,
+          user_id: creatorId,
+          role: 'ADMIN',
+        },
+      });
+
       return this.toDomain(result);
     });
   }
@@ -67,6 +57,23 @@ export class ClassroomRepositoryPrisma implements ClassroomRepository {
       where: { class_code: classCode }
     });
     return classroom ? this.toDomain(classroom) : null;
+  }
+
+  async update(classroom: Classroom): Promise<Classroom> {
+    const result = await this.prisma.classroom.update({
+      where: { id: classroom.id },
+      data: {
+        name: classroom.name,
+        description: classroom.description ?? null,
+        updated_at: classroom.updatedAt,
+      },
+    });
+
+    return this.toDomain(result);
+  }
+  
+  async deleteById(id: number): Promise<void> {
+    await this.prisma.classroom.delete({ where: { id } });
   }
 
   private toDomain(raw: any): Classroom {
