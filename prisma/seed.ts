@@ -1,81 +1,149 @@
-// import { PrismaClient, Prisma } from './generated/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { Prisma, PrismaClient } from '@prisma/client';
+import { ClassroomRole, ClassroomLogoType } from "@prisma/client";
 
-const pool = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
-const prisma = new PrismaClient({ adapter: pool });
-
-const userData: Prisma.UserCreateInput[] = [
-  {
-    name: 'JamJam',
-    email: 'jamjam@prisma.io',
-    password: 'password',
-    posts: {
-      create: [
-        {
-          title: 'Join the Prisma Discord',
-          content: 'https://pris.ly/discord',
-          published: true,
-        },
-      ],
-    },
-  },
-  {
-    name: 'Nilu',
-    email: 'nilu@prisma.io',
-    password: 'password',
-    posts: {
-      create: [
-        {
-          title: 'Follow Prisma on Twitter',
-          content: 'https://www.twitter.com/prisma',
-          published: true,
-        },
-      ],
-    },
-  },
-  {
-    name: 'Mahmoud',
-    email: 'mahmoud@prisma.io',
-    password: 'password',
-    posts: {
-      create: [
-        {
-          title: 'Ask a question about Prisma on GitHub',
-          content: 'https://www.github.com/prisma/prisma/discussions',
-          published: true,
-        },
-        {
-          title: 'Prisma on YouTube',
-          content: 'https://pris.ly/youtube',
-        },
-      ],
-    },
-  },
-];
+import { prisma } from './prisma.client';
 
 async function main() {
-  console.log(`Start seeding ...`);
+  // USERS
+  const [admin, instructor, student] = await Promise.all([
+    prisma.user.create({
+      data: {
+        name: "Alice Admin",
+        email: "alice@school.com",
+        hashed_password: "hashed_admin_pw",
+      },
+    }),
+    prisma.user.create({
+      data: {
+        name: "Bob Instructor",
+        email: "bob@school.com",
+        hashed_password: "hashed_instructor_pw",
+      },
+    }),
+    prisma.user.create({
+      data: {
+        name: "Charlie Student",
+        email: "charlie@school.com",
+        hashed_password: "hashed_student_pw",
+      },
+    }),
+  ]);
 
-  // Clear existing data
-  await prisma.post.deleteMany();
-  await prisma.user.deleteMany();
+  // CLASSROOMS
+  const classrooms = await Promise.all([
+    prisma.classroom.create({
+      data: {
+        class_code: "CS101",
+        name: "Intro to Programming",
+        description: "Programming basics for beginners.",
+        logo: {
+          create: {
+            type: ClassroomLogoType.GENERATED,
+            color: "#4F46E5",
+          },
+        },
+      },
+    }),
+    prisma.classroom.create({
+      data: {
+        class_code: "JS201",
+        name: "JavaScript Fundamentals",
+        description: "Core JavaScript concepts and practice.",
+        logo: {
+          create: {
+            type: ClassroomLogoType.GENERATED,
+            color: "#10B981",
+          },
+        },
+      },
+    }),
+    prisma.classroom.create({
+      data: {
+        class_code: "ALGO301",
+        name: "Algorithms & Data Structures",
+        description: "Problem solving with algorithms.",
+        logo: {
+          create: {
+            type: ClassroomLogoType.GENERATED,
+            color: "#F59E0B",
+          },
+        },
+      },
+    }),
+  ]);
 
-  for (const u of userData) {
-    const user = await prisma.user.create({
-      data: u,
+  // CLASSROOM USERS (roles vary per classroom)
+  await prisma.classroomUser.createMany({
+    data: [
+      // CS101
+      { user_id: admin.id, classroom_id: classrooms[0].id, role: ClassroomRole.ADMIN },
+      { user_id: instructor.id, classroom_id: classrooms[0].id, role: ClassroomRole.INSTRUCTOR },
+      { user_id: student.id, classroom_id: classrooms[0].id, role: ClassroomRole.STUDENT },
+
+      // JS201
+      { user_id: instructor.id, classroom_id: classrooms[1].id, role: ClassroomRole.ADMIN },
+      { user_id: student.id, classroom_id: classrooms[1].id, role: ClassroomRole.STUDENT },
+
+      // ALGO301
+      { user_id: admin.id, classroom_id: classrooms[2].id, role: ClassroomRole.ADMIN },
+      { user_id: student.id, classroom_id: classrooms[2].id, role: ClassroomRole.STUDENT },
+    ],
+  });
+
+  // SECTIONS + ASSIGNMENTS + CHALLENGES
+  for (const classroom of classrooms) {
+    const section = await prisma.section.create({
+      data: {
+        classroom_id: classroom.id,
+        title: "Week 1",
+        position: 1,
+      },
     });
-    console.log(`Created user with id: ${user.id}`);
+
+    const assignment = await prisma.assignment.create({
+      data: {
+        section_id: section.id,
+        title: "Basic Challenge",
+        description: "Introductory coding assignment.",
+      },
+    });
+
+    const challenge = await prisma.codingChallenge.create({
+      data: {
+        assignment_id: assignment.id,
+        title: "Return a Value",
+        language: "javascript",
+        starter_code: `function solve() {
+  // return the number 42
+}`,
+      },
+    });
+
+    await prisma.testCase.createMany({
+      data: [
+        {
+          challenge_id: challenge.id,
+          input: "",
+          expected_output: "42",
+          is_hidden: false,
+        },
+        {
+          challenge_id: challenge.id,
+          input: "",
+          expected_output: "42",
+          is_hidden: true,
+        },
+      ],
+    });
   }
-  console.log(`Seeding finished.`);
+
+  console.log("🌱 Seeded 3 classrooms with shared users successfully!");
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
+  .catch((e) => {
     console.error(e);
-    await prisma.$disconnect();
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });
